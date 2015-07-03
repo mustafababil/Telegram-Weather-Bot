@@ -18,6 +18,14 @@ TOKEN = '58737283:AAGB3v1c27r_rgsur5nCfc53gndhKg9iR_8'
 
 BASE_URL = 'https://api.telegram.org/bot' + TOKEN + '/'
 
+WEATHER_BASE_URL = 'http://api.openweathermap.org/data/2.5/weather?'
+WEATHER_API_KEY = 'bc69641f5b9befef6206061cc9c1826d'
+WEATHER_CITY_NAME = 'q='
+WEATHER_CITY_LAT = 'lat='
+WEATHER_CITY_LNG = 'lon='
+WEATHER_UNIT = 'metric'
+WEATHER_DAY_CNT = 1
+
 
 # ================================
 
@@ -132,16 +140,38 @@ class WebhookHandler(webapp2.RequestHandler):
 
                     else:
                         reply('Enter command?')
-                else:           # text is not command
+                else:           # text is not command, it is brief text
                     if getEnabled(chat_id):
-                        # TODO: hava durumu command
-                        reply('text but not command')
+                        WEATHER_URL_TEXT = WEATHER_BASE_URL + WEATHER_CITY_NAME + text + '&APPID=' + WEATHER_API_KEY + '&units=' + WEATHER_UNIT + '&cnt=' + str(WEATHER_DAY_CNT) 
+                        weatherResponse = json.load(urllib2.urlopen(WEATHER_URL_TEXT))
+
+                        resultCode = weatherResponse.get('cod')
+
+                        if resultCode == 200:       # Success city find
+                            cityName = weatherResponse.get('name')
+                            countryName = weatherResponse.get('sys').get('country')
+                            temp_current = weatherResponse.get('main').get('temp')
+                            temp_max = weatherResponse.get('main').get('temp_max')
+                            temp_min = weatherResponse.get('main').get('temp_min')
+                            description = weatherResponse.get('weather')[0].get('description')
+                            description_brief = weatherResponse.get('weather')[0].get('main')
+
+                            reply(cityName + ', ' + countryName + ': ' + str(temp_current) + ' C\n' +
+                                'Max temp: ' + str(temp_max) + ' - ' + 'Min temp: ' + str(temp_min) + '\n' +
+                                'Description: ' + description_brief + ' - ' + description)
+                        
+                        else:       # Not found city
+                            errorCode = weatherResponse.get('message')
+                            reply(str(resultCode) + ' - ' + errorCode)
+                            
+                        return  # finish process
                     else:
                         logging.info('not enabled for chat_id {}'.format(chat_id))
                 return
             else:               # for location inputs
-                reply('entered location')
-                return
+                WEATHER_URL_COORD = WEATHER_BASE_URL + WEATHER_CITY_LAT + str(lat) + '&' + WEATHER_CITY_LNG + str(lng) + '&APPID=' + WEATHER_API_KEY + '&units=' + WEATHER_UNIT + '&cnt=' + str(WEATHER_DAY_CNT) 
+
+                return          # finish process
         else:                   # no meaningful input, EXIT!
             logging.info('no text or location from user')
             reply('Enter your location by text or map')
