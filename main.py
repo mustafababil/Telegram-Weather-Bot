@@ -14,7 +14,7 @@ from google.appengine.api import urlfetch
 from google.appengine.ext import ndb
 import webapp2
 
-TOKEN = 'TOKEN HERE'
+TOKEN = '58737283:AAGB3v1c27r_rgsur5nCfc53gndhKg9iR_8'
 
 BASE_URL = 'https://api.telegram.org/bot' + TOKEN + '/'
 
@@ -63,33 +63,46 @@ class SetWebhookHandler(webapp2.RequestHandler):
 
 
 class WebhookHandler(webapp2.RequestHandler):
+
     def post(self):
         urlfetch.set_default_fetch_deadline(60)
         body = json.loads(self.request.body)
+        
+        # Console Log input message from user
         logging.info('request body:')
-        logging.info(body)
+        logging.info(json.dumps(body))
+
+        """
+            Fetch some types from user input
+        """
         self.response.write(json.dumps(body))
 
-        update_id = body['update_id']
-        message = body['message']
-        message_id = message.get('message_id')
-        date = message.get('date')
-        text = message.get('text')
-        fr = message.get('from')
-        chat = message['chat']
-        chat_id = chat['id']
+        update_id = body['update_id']   # get update_id
 
-        if not text:
-            logging.info('no text')
-            return
+        message = body['message']       # get message object
+        message_id = message.get('message_id')  # get message_id
+        date = message.get('date')      # get date
+        text = message.get('text')      # get user input text
 
+        fr = message.get('from')        # get from object, includes username, first_name, last_name, id keys
+
+        chat = message['chat']          # get chat object, includes username, first_name, last_name, id keys
+        chat_id = chat['id']            # get chat_id
+
+        location = message.get('location')  # get location object
+        if location:
+            lat = location['latitude']  # get latitude
+            lng = location['longitude'] # get longitude
+
+        """
+            To send message or image to user
+        """
         def reply(msg=None, img=None):
             if msg:
                 resp = urllib2.urlopen(BASE_URL + 'sendMessage', urllib.urlencode({
                     'chat_id': str(chat_id),
                     'text': msg.encode('utf-8'),
-                    'disable_web_page_preview': 'true',
-                    #'reply_to_message_id': str(message_id),
+                    'disable_web_page_preview': 'true'
                 })).read()
             elif img:
                 resp = multipart.post_multipart(BASE_URL + 'sendPhoto', [
@@ -105,38 +118,34 @@ class WebhookHandler(webapp2.RequestHandler):
             logging.info('send response:')
             logging.info(resp)
 
-        if text.startswith('/'):
-            if text.lower() == '/start':
-                reply('Bot enabled\nActive Commands:')
-                setEnabled(chat_id, True)
-            elif text.lower() == '/stop':
-                reply('Bot disabled')
-                setEnabled(chat_id, False)
-            elif text.lower() == '/image':
-                img = Image.new('RGB', (512, 512))
-                base = random.randint(0, 16777216)
-                pixels = [base+i*j for i in range(512) for j in range(512)]  # generate sample image
-                img.putdata(pixels)
-                output = StringIO.StringIO()
-                img.save(output, 'JPEG')
-                reply(img=output.getvalue())
-                reply('Image service is under construction')
-            else:
-                reply('Enter command?')
 
-        # CUSTOMIZE FROM HERE
-        else:
-            if getEnabled(chat_id):
-                resp1 = json.load(urllib2.urlopen('http://www.simsimi.com/requestChat?lc=en&ft=1.0&req=' + urllib.quote_plus(text.encode('utf-8'))))
-                back = resp1.get('res')
-                if not back:
-                    reply('okay...')
-                elif 'I HAVE NO RESPONSE' in back:
-                    reply('you said something with no meaning')
-                else:
-                    reply(back)
-            else:
-                logging.info('not enabled for chat_id {}'.format(chat_id))
+        if text or location:    # check if text or location is entered
+            if text:            # for text inputs
+                if text.startswith('/'):    # check if command
+                    if text.lower() == '/start':
+                        reply('Weathercast_Bot enabled\nPlease enter the city name as \'text\' or send as \'location\'')
+                        setEnabled(chat_id, True)
+
+                    elif text.lower() == '/stop':
+                        reply('Bot disabled')
+                        setEnabled(chat_id, False)
+
+                    else:
+                        reply('Enter command?')
+                else:           # text is not command
+                    if getEnabled(chat_id):
+                        # TODO: hava durumu command
+                        reply('text but not command')
+                    else:
+                        logging.info('not enabled for chat_id {}'.format(chat_id))
+                return
+            else:               # for location inputs
+                reply('entered location')
+                return
+        else:                   # no meaningful input, EXIT!
+            logging.info('no text or location from user')
+            reply('Enter your location by text or map')
+            return
 
 
 app = webapp2.WSGIApplication([
