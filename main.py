@@ -1,3 +1,5 @@
+# -*- coding: utf-8 -*-
+
 import StringIO
 import json
 import logging
@@ -26,6 +28,7 @@ WEATHER_CITY_LNG = 'lon='
 WEATHER_UNIT = 'metric'
 WEATHER_DAY_CNT = 1
 
+degree_sign= u'\N{DEGREE SIGN}'
 
 # ================================
 
@@ -131,7 +134,7 @@ class WebhookHandler(webapp2.RequestHandler):
             if text:            # for text inputs
                 if text.startswith('/'):    # check if command
                     if text.lower() == '/start':
-                        reply('Weathercast_Bot enabled\nPlease enter the city name as \'text\' or send as \'location\'')
+                        reply('Weathercast_Bot started\nPlease enter the city name as \'text\' or send as \'location\' \n\n->City,Country\n->Location')
                         setEnabled(chat_id, True)
 
                     elif text.lower() == '/stop':
@@ -156,7 +159,7 @@ class WebhookHandler(webapp2.RequestHandler):
                             description = weatherResponse.get('weather')[0].get('description')
                             description_brief = weatherResponse.get('weather')[0].get('main')
 
-                            reply(cityName + ', ' + countryName + ': ' + str(temp_current) + ' C\n' +
+                            reply(cityName + ', ' + countryName + ': ' + str(temp_current) + degree_sign + 'C\n' +
                                 'Max temp: ' + str(temp_max) + ' - ' + 'Min temp: ' + str(temp_min) + '\n' +
                                 'Description: ' + description_brief + ' - ' + description)
                         
@@ -170,6 +173,25 @@ class WebhookHandler(webapp2.RequestHandler):
                 return
             else:               # for location inputs
                 WEATHER_URL_COORD = WEATHER_BASE_URL + WEATHER_CITY_LAT + str(lat) + '&' + WEATHER_CITY_LNG + str(lng) + '&APPID=' + WEATHER_API_KEY + '&units=' + WEATHER_UNIT + '&cnt=' + str(WEATHER_DAY_CNT) 
+                weatherResponse = json.load(urllib2.urlopen(WEATHER_URL_COORD))
+
+                resultCode = weatherResponse.get('cod')
+                if resultCode == 200:   # Success city found
+                    cityName = weatherResponse.get('name')
+                    countryName = weatherResponse.get('sys').get('country')
+                    temp_current = weatherResponse.get('main').get('temp')
+                    temp_max = weatherResponse.get('main').get('temp_max')
+                    temp_min = weatherResponse.get('main').get('temp_min')
+                    description = weatherResponse.get('weather')[0].get('description')
+                    description_brief = weatherResponse.get('weather')[0].get('main')
+
+                    reply(cityName + ', ' + countryName + ': ' + str(temp_current) + degree_sign + 'C\n' +
+                                'Max temp: ' + str(temp_max) + ' - ' + 'Min temp: ' + str(temp_min) + '\n' +
+                                'Description: ' + description_brief + ' - ' + description)
+
+                else:       # Not found city
+                    errorCode = weatherResponse.get('message')
+                    reply(str(resultCode) + ' - ' + errorCode)
 
                 return          # finish process
         else:                   # no meaningful input, EXIT!
