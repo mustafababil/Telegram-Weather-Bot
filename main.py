@@ -30,6 +30,21 @@ WEATHER_DAY_CNT = 1
 
 degree_sign= u'\N{DEGREE SIGN}'
 
+thunderstorm = u'\U0001F4A8'    # Code: 200's, 900, 901, 902, 905
+drizzle = u'\U0001F4A7'         # Code: 300's
+rain = u'\U00002614'            # Code: 500's
+snowflake = u'\U00002744'       # Code: 600's snowflake
+snowman = u'\U000026C4'         # Code: 600's snowman, 903, 906
+atmosphere = u'\U0001F301'      # Code: 700's foogy
+clearSky = u'\U00002600'        # Code: 800 clear sky
+fewClouds = u'\U000026C5'       # Code: 801 sun behind clouds
+clouds = u'\U00002601'          # Code: 802-803-804 clouds general
+hot = u'\U0001F525'             # Code: 904
+
+
+
+
+
 # ================================
 
 class EnableStatus(ndb.Model):
@@ -129,6 +144,31 @@ class WebhookHandler(webapp2.RequestHandler):
             logging.info('send response:')
             logging.info(resp)
 
+        def getEmoji(weatherID):
+            if weatherID:
+                if str(weatherID)[0] == '2' or weatherID == 900 or weatherID==901 or weatherID==902 or weatherID==905:
+                    return thunderstorm
+                elif str(weatherID)[0] == '3':
+                    return drizzle
+                elif str(weatherID)[0] == '5':
+                    return rain
+                elif str(weatherID)[0] == '6' or weatherID==903 or weatherID== 906:
+                    return snowflake + ' ' + snowman
+                elif str(weatherID)[0] == '7':
+                    return atmosphere
+                elif weatherID == 800:
+                    return clearSky
+                elif weatherID == 801:
+                    return fewClouds
+                elif weatherID==802 or weatherID==803 or weatherID==803:
+                    return clouds
+                elif weatherID == 904:
+                    return hot
+                else:
+                    return u'\U0001F300'    # Default emoji
+
+            else:
+                return u'\U0001F300'    # Default emoji
 
         if text or location:    # check if text or location is entered
             if text:            # for text inputs
@@ -158,10 +198,13 @@ class WebhookHandler(webapp2.RequestHandler):
                             temp_min = weatherResponse.get('main').get('temp_min')
                             description = weatherResponse.get('weather')[0].get('description')
                             description_brief = weatherResponse.get('weather')[0].get('main')
-
+                            
+                            weatherID = weatherResponse.get('weather')[0].get('id')     # gets ID of weather description, used for emoji
+                            emoji = getEmoji(weatherID)
+                            
                             reply(cityName + ', ' + countryName + ': ' + str(temp_current) + degree_sign + 'C\n' +
-                                'Max temp: ' + str(temp_max) + ' - ' + 'Min temp: ' + str(temp_min) + '\n' +
-                                'Description: ' + description_brief + ' - ' + description)
+                                'Max temp: ' + str(temp_max) + degree_sign + ' - ' + 'Min temp: ' + str(temp_min)+ degree_sign  + '\n' +
+                                'Description: ' + description_brief + ' - ' + description + emoji)
                         
                         else:       # Not found city
                             errorCode = weatherResponse.get('message')
@@ -185,9 +228,12 @@ class WebhookHandler(webapp2.RequestHandler):
                     description = weatherResponse.get('weather')[0].get('description')
                     description_brief = weatherResponse.get('weather')[0].get('main')
 
+                    weatherID = weatherResponse.get('weather')[0].get('id')     # gets ID of weather description, used for emoji
+                    emoji = getEmoji(weatherID)
+
                     reply(cityName + ', ' + countryName + ': ' + str(temp_current) + degree_sign + 'C\n' +
-                                'Max temp: ' + str(temp_max) + ' - ' + 'Min temp: ' + str(temp_min) + '\n' +
-                                'Description: ' + description_brief + ' - ' + description)
+                                'Max temp: ' + str(temp_max) + degree_sign + ' - ' + 'Min temp: ' + str(temp_min) + degree_sign + '\n' +
+                                'Description: ' + description_brief + ' - ' + description + emoji)
 
                 else:       # Not found city
                     errorCode = weatherResponse.get('message')
