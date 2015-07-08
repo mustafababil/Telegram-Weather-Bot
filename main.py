@@ -21,7 +21,7 @@ TOKEN = '58737283:AAGB3v1c27r_rgsur5nCfc53gndhKg9iR_8'
 BASE_URL = 'https://api.telegram.org/bot' + TOKEN + '/'
 
 WEATHER_BASE_URL = 'http://api.openweathermap.org/data/2.5/weather?'
-WEATHER_API_KEY = 'bc69641f5b9befef6206061cc9c1826d'
+WEATHER_API_KEY = '04f9cff3a5fbb8c457e31444bae05328'
 WEATHER_CITY_NAME = 'q='
 WEATHER_CITY_LAT = 'lat='
 WEATHER_CITY_LNG = 'lon='
@@ -40,8 +40,6 @@ clearSky = u'\U00002600'        # Code: 800 clear sky
 fewClouds = u'\U000026C5'       # Code: 801 sun behind clouds
 clouds = u'\U00002601'          # Code: 802-803-804 clouds general
 hot = u'\U0001F525'             # Code: 904
-
-
 
 
 
@@ -88,6 +86,7 @@ class SetWebhookHandler(webapp2.RequestHandler):
             self.response.write(json.dumps(json.load(urllib2.urlopen(BASE_URL + 'setWebhook', urllib.urlencode({'url': url})))))
 
 
+
 class WebhookHandler(webapp2.RequestHandler):
 
     def post(self):
@@ -109,8 +108,12 @@ class WebhookHandler(webapp2.RequestHandler):
         message_id = message.get('message_id')  # get message_id
         date = message.get('date')      # get date
         text = message.get('text')      # get user input text
+        if text:
+            text = text.encode('utf-8','strict')
 
         fr = message.get('from')        # get from object, includes username, first_name, last_name, id keys
+        userID  = fr['id']              # get User ID
+        first_name = fr['first_name']   # get User first name
 
         chat = message['chat']          # get chat object, includes username, first_name, last_name, id keys
         chat_id = chat['id']            # get chat_id
@@ -120,15 +123,17 @@ class WebhookHandler(webapp2.RequestHandler):
             lat = location['latitude']  # get latitude
             lng = location['longitude'] # get longitude
 
+        
+
         """
             To send message or image to user
         """
         def reply(msg=None, img=None):
             if msg:
-                resp = urllib2.urlopen(BASE_URL + 'sendMessage', urllib.urlencode({
+                logging.debug('Input text: ' + str(text))
+                resp = urllib.urlopen(BASE_URL + 'sendMessage', urllib.urlencode({
                     'chat_id': str(chat_id),
-                    'text': msg.encode('utf-8'),
-                    'disable_web_page_preview': 'true'
+                    'text': msg.encode('utf-8','strict')
                 })).read()
             elif img:
                 resp = multipart.post_multipart(BASE_URL + 'sendPhoto', [
@@ -138,12 +143,16 @@ class WebhookHandler(webapp2.RequestHandler):
                     ('photo', 'image.jpg', img),
                 ])
             else:
-                logging.error('no msg or img specified')
+                ('no msg or img specified')
                 resp = None
 
             logging.info('send response:')
             logging.info(resp)
 
+
+        """
+            Return related emojis according to weather
+        """
         def getEmoji(weatherID):
             if weatherID:
                 if str(weatherID)[0] == '2' or weatherID == 900 or weatherID==901 or weatherID==902 or weatherID==905:
@@ -181,11 +190,27 @@ class WebhookHandler(webapp2.RequestHandler):
                         reply('Bot disabled')
                         setEnabled(chat_id, False)
 
+                    elif text.lower() == '/help':
+                        reply('Write the as follows city,country or just easily send your location')
+
+                    elif text.lower().startswith() == '/weather':
+                        reply('Please enter city name or send location coordinates')
+
                     else:
-                        reply('Enter command?')
+                        #reply('Enter command?')
+                        return
                 else:           # text is not command, it is brief text
                     if getEnabled(chat_id):
-                        WEATHER_URL_TEXT = WEATHER_BASE_URL + WEATHER_CITY_NAME + text + '&APPID=' + WEATHER_API_KEY + '&units=' + WEATHER_UNIT + '&cnt=' + str(WEATHER_DAY_CNT) 
+                        #WEATHER_URL_TEXT = WEATHER_BASE_URL + WEATHER_CITY_NAME + text + '&APPID=' + WEATHER_API_KEY + '&units=' + WEATHER_UNIT + '&cnt=' + str(WEATHER_DAY_CNT) 
+                        #WEATHER_URL_TEXT = urllib.quote_plus(WEATHER_URL_TEXT)
+                        #
+                        
+                        urlEncodePairs = { 'q': text, 'APPID': WEATHER_API_KEY, 'units': WEATHER_UNIT, 'cnt': 1 }
+                        encodedURL = urllib.urlencode(urlEncodePairs)
+
+                        WEATHER_URL_TEXT = WEATHER_BASE_URL + encodedURL
+                        logging.debug("REQ URL: " + WEATHER_URL_TEXT)
+
                         weatherResponse = json.load(urllib2.urlopen(WEATHER_URL_TEXT))
 
                         resultCode = weatherResponse.get('cod')
@@ -203,13 +228,13 @@ class WebhookHandler(webapp2.RequestHandler):
                             emoji = getEmoji(weatherID)
                             
                             reply(cityName + ', ' + countryName + ': ' + str(temp_current) + degree_sign + 'C\n' +
-                                'Max temp: ' + str(temp_max) + degree_sign + ' - ' + 'Min temp: ' + str(temp_min)+ degree_sign  + '\n' +
+                                'Max temp: ' + str(temp_max) + degree_sign + 'C - ' + 'Min temp: ' + str(temp_min)+ degree_sign  + 'C\n' +
                                 'Description: ' + description_brief + ' - ' + description + emoji)
-                        
+                            
                         else:       # Not found city
                             errorCode = weatherResponse.get('message')
                             reply(str(resultCode) + ' - ' + errorCode)
-                            
+                        
                         return  # finish process
                     else:
                         logging.info('not enabled for chat_id {}'.format(chat_id))
@@ -232,7 +257,7 @@ class WebhookHandler(webapp2.RequestHandler):
                     emoji = getEmoji(weatherID)
 
                     reply(cityName + ', ' + countryName + ': ' + str(temp_current) + degree_sign + 'C\n' +
-                                'Max temp: ' + str(temp_max) + degree_sign + ' - ' + 'Min temp: ' + str(temp_min) + degree_sign + '\n' +
+                                'Max temp: ' + str(temp_max) + degree_sign + 'C - ' + 'Min temp: ' + str(temp_min) + degree_sign + 'C\n' +
                                 'Description: ' + description_brief + ' - ' + description + emoji)
 
                 else:       # Not found city
@@ -242,7 +267,7 @@ class WebhookHandler(webapp2.RequestHandler):
                 return          # finish process
         else:                   # no meaningful input, EXIT!
             logging.info('no text or location from user')
-            reply('Enter your location by text or map')
+            #reply('Enter your location by text or map')
             return
 
 
