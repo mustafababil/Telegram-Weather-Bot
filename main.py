@@ -7,6 +7,8 @@ import random
 import urllib
 import urllib2
 
+from inputModel import inputModel
+
 # for sending images
 from PIL import Image
 import multipart
@@ -15,6 +17,9 @@ import multipart
 from google.appengine.api import urlfetch
 from google.appengine.ext import ndb
 import webapp2
+
+
+######## GLOBAL VARIABLES ########
 
 TOKEN = '58737283:AAGB3v1c27r_rgsur5nCfc53gndhKg9iR_8'
 
@@ -30,6 +35,7 @@ WEATHER_DAY_CNT = 1
 
 degree_sign= u'\N{DEGREE SIGN}'
 
+# Openweathermap Weather codes and corressponding emojis
 thunderstorm = u'\U0001F4A8'    # Code: 200's, 900, 901, 902, 905
 drizzle = u'\U0001F4A7'         # Code: 300's
 rain = u'\U00002614'            # Code: 500's
@@ -41,9 +47,10 @@ fewClouds = u'\U000026C5'       # Code: 801 sun behind clouds
 clouds = u'\U00002601'          # Code: 802-803-804 clouds general
 hot = u'\U0001F525'             # Code: 904
 
-
-
 # ================================
+
+
+######## HELPER CLASSES AND FUNCTIONS ########
 
 class EnableStatus(ndb.Model):
     # key name: str(chat_id)
@@ -62,7 +69,6 @@ def getEnabled(chat_id):
     if es:
         return es.enabled
     return False
-
 
 # ================================
 
@@ -86,6 +92,7 @@ class SetWebhookHandler(webapp2.RequestHandler):
             self.response.write(json.dumps(json.load(urllib2.urlopen(BASE_URL + 'setWebhook', urllib.urlencode({'url': url})))))
 
 
+######## MAIN BOT WORK DONE HERE ########
 
 class WebhookHandler(webapp2.RequestHandler):
 
@@ -95,35 +102,25 @@ class WebhookHandler(webapp2.RequestHandler):
         
         # Console Log input message from user
         logging.info('request body:')
-        logging.info(json.dumps(body))
+        logging.info(json.dumps(body))  # escape " u' " from input
+        
 
         """
             Fetch some types from user input
         """
-        self.response.write(json.dumps(body))
+        self.response.write(json.dumps(body))       # QUESTION: What does it do exactly?
+        newInput = inputModel(body)     # Initialize input model with user input
 
-        update_id = body['update_id']   # get update_id
+        update_id = newInput.getUpdateID()
+        message_id = newInput.getMessageID()
+        text = newInput.getText()
+        fromID = newInput.getFromID()
+        fromUserName = newInput.getFromName()
+        chat_id = newInput.getChatID()
+        location = newInput.getLocation()
+        lat = newInput.getLat()
+        lng = newInput.getLng()
 
-        message = body['message']       # get message object
-        message_id = message.get('message_id')  # get message_id
-        date = message.get('date')      # get date
-        text = message.get('text')      # get user input text
-        if text:
-            text = text.encode('utf-8','strict')
-
-        fr = message.get('from')        # get from object, includes username, first_name, last_name, id keys
-        userID  = fr['id']              # get User ID
-        first_name = fr['first_name']   # get User first name
-
-        chat = message['chat']          # get chat object, includes username, first_name, last_name, id keys
-        chat_id = chat['id']            # get chat_id
-
-        location = message.get('location')  # get location object
-        if location:
-            lat = location['latitude']  # get latitude
-            lng = location['longitude'] # get longitude
-
-        
 
         """
             To send message or image to user
@@ -193,7 +190,7 @@ class WebhookHandler(webapp2.RequestHandler):
                     elif text.lower() == '/help':
                         reply('Write the as follows city,country or just easily send your location')
 
-                    elif text.lower().startswith() == '/weather':
+                    elif text.lower().startswith('/weather'):
                         reply('Please enter city name or send location coordinates')
 
                     else:
