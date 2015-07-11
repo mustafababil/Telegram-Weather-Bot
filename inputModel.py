@@ -51,12 +51,12 @@ class inputModel(object):
 	
 	def getLat(self):
 		if self.getLocation():
-			return getLocation().get('latitude')
+			return self.getLocation().get('latitude')
 
 
 	def getLng(self):
 		if self.getLocation():
-			return getLocation().get('longitude')
+			return self.getLocation().get('longitude')
 
 
 
