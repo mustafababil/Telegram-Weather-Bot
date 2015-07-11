@@ -180,7 +180,7 @@ class WebhookHandler(webapp2.RequestHandler):
             if text:            # for text inputs
                 if text.startswith('/'):    # check if command
                     if text.lower() == '/start':
-                        reply('Weathercast_Bot started\nPlease enter the city name as \'text\' or send as \'location\' \n\n->City,Country\n->Location')
+                        reply('@Weathercast_Bot started\nPlease enter the city name as \'text\' or send as \'location\'\nComing features:\n Forecast for next day(s)\n Daily notification \n\n->City,Country\n->Location')
                         setEnabled(chat_id, True)
 
                     elif text.lower() == '/stop':
