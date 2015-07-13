@@ -1,5 +1,8 @@
 
 import urllib
+import urllib2
+import json
+import StringIO
 
 # standard app engine imports
 import logging
@@ -23,7 +26,117 @@ TOKEN = '58737283:AAGB3v1c27r_rgsur5nCfc53gndhKg9iR_8'
 
 BASE_URL = 'https://api.telegram.org/bot' + TOKEN + '/'
 
+
+WEATHER_BASE_URL = 'http://api.openweathermap.org/data/2.5/weather?'
+WEATHER_API_KEY = '04f9cff3a5fbb8c457e31444bae05328'
+WEATHER_CITY_NAME = 'q='
+WEATHER_CITY_LAT = 'lat='
+WEATHER_CITY_LNG = 'lon='
+WEATHER_UNIT = 'metric'
+WEATHER_DAY_CNT = 1
+
+degree_sign= u'\N{DEGREE SIGN}'
+
 ################################################
+
+def locationInputHandler(chat_id, response):
+    resultCode = response.get('cod')
+
+    if resultCode == 200:   # Success city found
+        cityName = response.get('name')
+        countryName = response.get('sys').get('country')
+        temp_current = response.get('main').get('temp')
+        temp_max = response.get('main').get('temp_max')
+        temp_min = response.get('main').get('temp_min')
+        description = response.get('weather')[0].get('description')
+        description_brief = response.get('weather')[0].get('main')
+
+        weatherID = response.get('weather')[0].get('id')     # gets ID of weather description, used for emoji
+        emoji = getEmoji(weatherID)
+
+        sendTextMessage(chat_id, cityName + ', ' + countryName + ': ' + str(temp_current) + degree_sign + 'C\n' +
+                    'Max temp: ' + str(temp_max) + degree_sign + 'C - ' + 'Min temp: ' + str(temp_min) + degree_sign + 'C\n' +
+                    'Description: ' + description_brief + ' - ' + description + emoji)
+
+    else:       # Not found city
+        errorCode = response.get('message')
+        sendTextMessage(chat_id, str(resultCode) + ' - ' + errorCode)
+
+
+
+"""
+    Location input request
+"""
+def locationInputRequest(latitude, longitude):
+    if not latitude or not longitude:
+        logging.warning('Error: - responseController.locationInputRequest: No lat or lng input')
+
+    try:
+        urlEncodePairs = { 'lat': str(latitude), 'lon': str(longitude), 'APPID': WEATHER_API_KEY, 'units': WEATHER_UNIT, 'cnt': WEATHER_DAY_CNT }
+        encodedURL = urllib.urlencode(urlEncodePairs)
+
+        WEATHER_URL_COORD = WEATHER_BASE_URL + encodedURL
+
+        weatherResponse = json.load(urllib2.urlopen(WEATHER_URL_COORD))
+
+        return weatherResponse
+
+    except Exception, e:
+        logging.warning('Error: - responseController.locationInputRequest: ' + str(e))
+
+
+
+
+
+"""
+    Text response handler
+"""
+def textInputHandler(chat_id, response):
+    resultCode = response['cod']
+
+    if resultCode == 200:       # Success city found
+        cityName = response.get('name')
+        countryName = response.get('sys').get('country')
+        temp_current = response.get('main').get('temp')
+        temp_max = response.get('main').get('temp_max')
+        temp_min = response.get('main').get('temp_min')
+        description = response.get('weather')[0].get('description')
+        description_brief = response.get('weather')[0].get('main')
+        
+        weatherID = response.get('weather')[0].get('id')     # gets ID of weather description, used for emoji
+        emoji = getEmoji(weatherID)
+        
+        sendTextMessage(chat_id, cityName + ', ' + countryName + ': ' + str(temp_current) + degree_sign + 'C\n' +
+            'Max temp: ' + str(temp_max) + degree_sign + 'C - ' + 'Min temp: ' + str(temp_min)+ degree_sign  + 'C\n' +
+            'Description: ' + description_brief + ' - ' + description + emoji)
+        
+    else:       # Not found city
+        errorCode = response.get('message')
+        sendTextMessage(chat_id, str(resultCode) + ' - ' + errorCode)
+
+
+
+"""
+    Text input request
+"""
+def textInputRequest(text):
+    if not text:
+        logging.warning('Error: - responseController.textInputRequest: No text input')
+
+    try:
+        urlEncodePairs = { 'q': text, 'APPID': WEATHER_API_KEY, 'units': WEATHER_UNIT, 'cnt': WEATHER_DAY_CNT }
+        encodedURL = urllib.urlencode(urlEncodePairs)
+
+        WEATHER_URL_TEXT = WEATHER_BASE_URL + encodedURL
+
+        weatherResponse = json.load(urllib2.urlopen(WEATHER_URL_TEXT))
+
+        return weatherResponse
+
+    except Exception as e:
+        logging.warning('Error: - responseController.textInputRequest: ' + str(e))
+
+
 
 """
     Send text message to user

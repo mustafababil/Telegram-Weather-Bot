@@ -127,7 +127,7 @@ class WebhookHandler(webapp2.RequestHandler):
                         setEnabled(chat_id, False)
 
                     elif text.lower() == '/help':
-                        responseController.sendTextMessage(chat_id, 'Write the as follows city,country or just easily send your location')
+                        responseController.sendTextMessage(chat_id, 'Write as city,country or just send your location easily')
 
                     elif text.lower().startswith('/weather'):
                         responseController.sendTextMessage(chat_id, 'Please enter city name or send location coordinates directly')
@@ -135,76 +135,28 @@ class WebhookHandler(webapp2.RequestHandler):
                     else:
                         responseController.sendTextMessage(chat_id, 'Enter from available commands')
                         return
+                
+
                 else:           # text is not command, it is brief text
                     if getEnabled(chat_id):
-                        #WEATHER_URL_TEXT = WEATHER_BASE_URL + WEATHER_CITY_NAME + text + '&APPID=' + WEATHER_API_KEY + '&units=' + WEATHER_UNIT + '&cnt=' + str(WEATHER_DAY_CNT) 
-                        #WEATHER_URL_TEXT = urllib.quote_plus(WEATHER_URL_TEXT)
-                        #
-                        
-                        urlEncodePairs = { 'q': text, 'APPID': WEATHER_API_KEY, 'units': WEATHER_UNIT, 'cnt': 1 }
-                        encodedURL = urllib.urlencode(urlEncodePairs)
+                        weatherResponse = responseController.textInputRequest(text)     # Make request to weather API and get results
+                        responseController.textInputHandler(chat_id, weatherResponse)   # Handle response
+                        return                                                          # finish process
 
-                        WEATHER_URL_TEXT = WEATHER_BASE_URL + encodedURL
-                        logging.debug("REQ URL: " + WEATHER_URL_TEXT)
-
-                        weatherResponse = json.load(urllib2.urlopen(WEATHER_URL_TEXT))
-
-                        resultCode = weatherResponse.get('cod')
-
-                        if resultCode == 200:       # Success city find
-                            cityName = weatherResponse.get('name')
-                            countryName = weatherResponse.get('sys').get('country')
-                            temp_current = weatherResponse.get('main').get('temp')
-                            temp_max = weatherResponse.get('main').get('temp_max')
-                            temp_min = weatherResponse.get('main').get('temp_min')
-                            description = weatherResponse.get('weather')[0].get('description')
-                            description_brief = weatherResponse.get('weather')[0].get('main')
-                            
-                            weatherID = weatherResponse.get('weather')[0].get('id')     # gets ID of weather description, used for emoji
-                            emoji = responseController.getEmoji(weatherID)
-                            
-                            responseController.sendTextMessage(chat_id, cityName + ', ' + countryName + ': ' + str(temp_current) + degree_sign + 'C\n' +
-                                'Max temp: ' + str(temp_max) + degree_sign + 'C - ' + 'Min temp: ' + str(temp_min)+ degree_sign  + 'C\n' +
-                                'Description: ' + description_brief + ' - ' + description + emoji)
-                            
-                        else:       # Not found city
-                            errorCode = weatherResponse.get('message')
-                            responseController.sendTextMessage(chat_id, str(resultCode) + ' - ' + errorCode)
-                        
-                        return  # finish process
                     else:
                         logging.info('not enabled for chat_id {}'.format(chat_id))
-                        responseController.sendTextMessage(chat_id, 'Please enable bot by command /start')
+                        responseController.sendTextMessage(chat_id, 'Please enable bot by writing /start')
+
+
                 return
             else:               # for location inputs
-                WEATHER_URL_COORD = WEATHER_BASE_URL + WEATHER_CITY_LAT + str(lat) + '&' + WEATHER_CITY_LNG + str(lng) + '&APPID=' + WEATHER_API_KEY + '&units=' + WEATHER_UNIT + '&cnt=' + str(WEATHER_DAY_CNT) 
-                weatherResponse = json.load(urllib2.urlopen(WEATHER_URL_COORD))
+                weatherResponse = responseController.locationInputRequest(lat, lng)     # Make request to weather API and get results
+                responseController.locationInputHandler(chat_id, weatherResponse)       # Handle response
+                return                                                                  # finish process
 
-                resultCode = weatherResponse.get('cod')
-                if resultCode == 200:   # Success city found
-                    cityName = weatherResponse.get('name')
-                    countryName = weatherResponse.get('sys').get('country')
-                    temp_current = weatherResponse.get('main').get('temp')
-                    temp_max = weatherResponse.get('main').get('temp_max')
-                    temp_min = weatherResponse.get('main').get('temp_min')
-                    description = weatherResponse.get('weather')[0].get('description')
-                    description_brief = weatherResponse.get('weather')[0].get('main')
-
-                    weatherID = weatherResponse.get('weather')[0].get('id')     # gets ID of weather description, used for emoji
-                    emoji = responseController.getEmoji(weatherID)
-
-                    responseController.sendTextMessage(chat_id, cityName + ', ' + countryName + ': ' + str(temp_current) + degree_sign + 'C\n' +
-                                'Max temp: ' + str(temp_max) + degree_sign + 'C - ' + 'Min temp: ' + str(temp_min) + degree_sign + 'C\n' +
-                                'Description: ' + description_brief + ' - ' + description + emoji)
-
-                else:       # Not found city
-                    errorCode = weatherResponse.get('message')
-                    responseController.sendTextMessage(chat_id, str(resultCode) + ' - ' + errorCode)
-
-                return          # finish process
         else:                   # no meaningful input, EXIT!
             logging.info('no text or location from user')
-            #responseController.sendTextMessage(chat_id, 'Enter your location by text or map')
+            responseController.sendTextMessage(chat_id, 'Enter your location by text or map')
             return
 
 
