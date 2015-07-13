@@ -7,7 +7,9 @@ import random
 import urllib
 import urllib2
 
+# Custom imports
 from inputModel import inputModel
+import responseController
 
 # for sending images
 from PIL import Image
@@ -35,17 +37,7 @@ WEATHER_DAY_CNT = 1
 
 degree_sign= u'\N{DEGREE SIGN}'
 
-# Openweathermap Weather codes and corressponding emojis
-thunderstorm = u'\U0001F4A8'    # Code: 200's, 900, 901, 902, 905
-drizzle = u'\U0001F4A7'         # Code: 300's
-rain = u'\U00002614'            # Code: 500's
-snowflake = u'\U00002744'       # Code: 600's snowflake
-snowman = u'\U000026C4'         # Code: 600's snowman, 903, 906
-atmosphere = u'\U0001F301'      # Code: 700's foogy
-clearSky = u'\U00002600'        # Code: 800 clear sky
-fewClouds = u'\U000026C5'       # Code: 801 sun behind clouds
-clouds = u'\U00002601'          # Code: 802-803-804 clouds general
-hot = u'\U0001F525'             # Code: 904
+
 
 # ================================
 
@@ -122,79 +114,26 @@ class WebhookHandler(webapp2.RequestHandler):
         lng = newInput.getLng()
 
 
-        """
-            To send message or image to user
-        """
-        def reply(msg=None, img=None):
-            if msg:
-                logging.debug('Input text: ' + str(text))
-                resp = urllib.urlopen(BASE_URL + 'sendMessage', urllib.urlencode({
-                    'chat_id': str(chat_id),
-                    'text': msg.encode('utf-8','strict')
-                })).read()
-            elif img:
-                resp = multipart.post_multipart(BASE_URL + 'sendPhoto', [
-                    ('chat_id', str(chat_id)),
-                    ('reply_to_message_id', str(message_id)),
-                ], [
-                    ('photo', 'image.jpg', img),
-                ])
-            else:
-                ('no msg or img specified')
-                resp = None
-
-            logging.info('send response:')
-            logging.info(resp)
-
-
-        """
-            Return related emojis according to weather
-        """
-        def getEmoji(weatherID):
-            if weatherID:
-                if str(weatherID)[0] == '2' or weatherID == 900 or weatherID==901 or weatherID==902 or weatherID==905:
-                    return thunderstorm
-                elif str(weatherID)[0] == '3':
-                    return drizzle
-                elif str(weatherID)[0] == '5':
-                    return rain
-                elif str(weatherID)[0] == '6' or weatherID==903 or weatherID== 906:
-                    return snowflake + ' ' + snowman
-                elif str(weatherID)[0] == '7':
-                    return atmosphere
-                elif weatherID == 800:
-                    return clearSky
-                elif weatherID == 801:
-                    return fewClouds
-                elif weatherID==802 or weatherID==803 or weatherID==803:
-                    return clouds
-                elif weatherID == 904:
-                    return hot
-                else:
-                    return u'\U0001F300'    # Default emoji
-
-            else:
-                return u'\U0001F300'    # Default emoji
 
         if text or location:    # check if text or location is entered
             if text:            # for text inputs
                 if text.startswith('/'):    # check if command
                     if text.lower() == '/start':
-                        reply('@Weathercast_Bot started\nPlease enter the city name as \'text\' or send as \'location\'\nComing features:\n Forecast for next day(s)\n Daily notification \n\n->City,Country\n->Location')
+                        responseController.sendTextMessage(chat_id, '@Weathercast_Bot started\nPlease enter the city name as \'text\' or send as \'location\'\nComing features:\n Forecast for next day(s)\n Daily notification \n\n->City,Country\n->Location')
                         setEnabled(chat_id, True)
 
                     elif text.lower() == '/stop':
-                        reply('Bot disabled')
+                        responseController.sendTextMessage(chat_id, 'Bot disabled')
                         setEnabled(chat_id, False)
 
                     elif text.lower() == '/help':
-                        reply('Write the as follows city,country or just easily send your location')
+                        responseController.sendTextMessage(chat_id, 'Write the as follows city,country or just easily send your location')
 
                     elif text.lower().startswith('/weather'):
-                        reply('Please enter city name or send location coordinates')
+                        responseController.sendTextMessage(chat_id, 'Please enter city name or send location coordinates directly')
 
                     else:
-                        #reply('Enter command?')
+                        responseController.sendTextMessage(chat_id, 'Enter from available commands')
                         return
                 else:           # text is not command, it is brief text
                     if getEnabled(chat_id):
@@ -222,19 +161,20 @@ class WebhookHandler(webapp2.RequestHandler):
                             description_brief = weatherResponse.get('weather')[0].get('main')
                             
                             weatherID = weatherResponse.get('weather')[0].get('id')     # gets ID of weather description, used for emoji
-                            emoji = getEmoji(weatherID)
+                            emoji = responseController.getEmoji(weatherID)
                             
-                            reply(cityName + ', ' + countryName + ': ' + str(temp_current) + degree_sign + 'C\n' +
+                            responseController.sendTextMessage(chat_id, cityName + ', ' + countryName + ': ' + str(temp_current) + degree_sign + 'C\n' +
                                 'Max temp: ' + str(temp_max) + degree_sign + 'C - ' + 'Min temp: ' + str(temp_min)+ degree_sign  + 'C\n' +
                                 'Description: ' + description_brief + ' - ' + description + emoji)
                             
                         else:       # Not found city
                             errorCode = weatherResponse.get('message')
-                            reply(str(resultCode) + ' - ' + errorCode)
+                            responseController.sendTextMessage(chat_id, str(resultCode) + ' - ' + errorCode)
                         
                         return  # finish process
                     else:
                         logging.info('not enabled for chat_id {}'.format(chat_id))
+                        responseController.sendTextMessage(chat_id, 'Please enable bot by command /start')
                 return
             else:               # for location inputs
                 WEATHER_URL_COORD = WEATHER_BASE_URL + WEATHER_CITY_LAT + str(lat) + '&' + WEATHER_CITY_LNG + str(lng) + '&APPID=' + WEATHER_API_KEY + '&units=' + WEATHER_UNIT + '&cnt=' + str(WEATHER_DAY_CNT) 
@@ -251,20 +191,20 @@ class WebhookHandler(webapp2.RequestHandler):
                     description_brief = weatherResponse.get('weather')[0].get('main')
 
                     weatherID = weatherResponse.get('weather')[0].get('id')     # gets ID of weather description, used for emoji
-                    emoji = getEmoji(weatherID)
+                    emoji = responseController.getEmoji(weatherID)
 
-                    reply(cityName + ', ' + countryName + ': ' + str(temp_current) + degree_sign + 'C\n' +
+                    responseController.sendTextMessage(chat_id, cityName + ', ' + countryName + ': ' + str(temp_current) + degree_sign + 'C\n' +
                                 'Max temp: ' + str(temp_max) + degree_sign + 'C - ' + 'Min temp: ' + str(temp_min) + degree_sign + 'C\n' +
                                 'Description: ' + description_brief + ' - ' + description + emoji)
 
                 else:       # Not found city
                     errorCode = weatherResponse.get('message')
-                    reply(str(resultCode) + ' - ' + errorCode)
+                    responseController.sendTextMessage(chat_id, str(resultCode) + ' - ' + errorCode)
 
                 return          # finish process
         else:                   # no meaningful input, EXIT!
             logging.info('no text or location from user')
-            #reply('Enter your location by text or map')
+            #responseController.sendTextMessage(chat_id, 'Enter your location by text or map')
             return
 
 
