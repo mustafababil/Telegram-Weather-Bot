@@ -10,7 +10,6 @@ import urllib2
 # Custom imports
 from inputModel import inputModel
 import responseController
-#import create_db
 
 # for sending images
 from PIL import Image
