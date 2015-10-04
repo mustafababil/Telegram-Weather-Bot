@@ -10,6 +10,7 @@ import urllib2
 # Custom imports
 from inputModel import inputModel
 import responseController
+#import create_db
 
 # for sending images
 from PIL import Image
@@ -98,9 +99,9 @@ class WebhookHandler(webapp2.RequestHandler):
         
 
         """
-            Fetch some types from user input
+            Fetch user input
         """
-        self.response.write(json.dumps(body))       # QUESTION: What does it do exactly?
+        self.response.write(json.dumps(body))       # QUESTION: What does response() do exactly?
         newInput = inputModel(body)     # Initialize input model with user input
 
         update_id = newInput.getUpdateID()
@@ -131,7 +132,7 @@ class WebhookHandler(webapp2.RequestHandler):
 
                     elif text.lower().startswith('/weather'):
                         responseController.sendTextMessage(chat_id, 'Please enter city name or send location coordinates directly')
-
+                        
                     else:
                         responseController.sendTextMessage(chat_id, 'Enter from available commands')
                         return

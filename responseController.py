@@ -39,6 +39,10 @@ degree_sign= u'\N{DEGREE SIGN}'
 
 ################################################
 
+"""
+    Handles location inputs.
+    Parses Openweathermap @response and sends the information to user at specified @chat_id
+"""
 def locationInputHandler(chat_id, response):
     resultCode = response.get('cod')
 
@@ -54,9 +58,9 @@ def locationInputHandler(chat_id, response):
         weatherID = response.get('weather')[0].get('id')     # gets ID of weather description, used for emoji
         emoji = getEmoji(weatherID)
 
-        sendTextMessage(chat_id, cityName + ', ' + countryName + ': ' + str(temp_current) + degree_sign + 'C\n' +
-                    'Max temp: ' + str(temp_max) + degree_sign + 'C - ' + 'Min temp: ' + str(temp_min) + degree_sign + 'C\n' +
-                    'Description: ' + description_brief + ' - ' + description + emoji)
+        message = cityName + ', ' + countryName + ': ' + str(temp_current) + degree_sign + 'C\n' + 'Max: ' + str(temp_max) + degree_sign + 'C - ' + 'Min: ' + str(temp_min) + degree_sign + 'C\n' + description_brief + ' - ' + description + emoji + emoji
+
+        sendTextMessage(chat_id, message)
 
     else:       # Not found city
         errorCode = response.get('message')
@@ -66,6 +70,7 @@ def locationInputHandler(chat_id, response):
 
 """
     Location input request
+    Makes request to Openweathermap to fetch weathercast
 """
 def locationInputRequest(latitude, longitude):
     if not latitude or not longitude:
@@ -90,6 +95,7 @@ def locationInputRequest(latitude, longitude):
 
 """
     Text response handler
+    Parses Openweathermap @response and sends the information to user at specified @chat_id
 """
 def textInputHandler(chat_id, response):
     resultCode = response['cod']
@@ -106,9 +112,9 @@ def textInputHandler(chat_id, response):
         weatherID = response.get('weather')[0].get('id')     # gets ID of weather description, used for emoji
         emoji = getEmoji(weatherID)
         
-        sendTextMessage(chat_id, cityName + ', ' + countryName + ': ' + str(temp_current) + degree_sign + 'C\n' +
-            'Max temp: ' + str(temp_max) + degree_sign + 'C - ' + 'Min temp: ' + str(temp_min)+ degree_sign  + 'C\n' +
-            'Description: ' + description_brief + ' - ' + description + emoji)
+        message = cityName + ', ' + countryName + ': ' + str(temp_current) + degree_sign + 'C\n' + 'Max: ' + str(temp_max) + degree_sign + 'C - ' + 'Min: ' + str(temp_min)+ degree_sign  + 'C\n' + description_brief + ' - ' + description + emoji + emoji
+            
+        sendTextMessage(chat_id, message)
         
     else:       # Not found city
         errorCode = response.get('message')
@@ -118,6 +124,7 @@ def textInputHandler(chat_id, response):
 
 """
     Text input request
+    Makes request to Openweathermap to fetch weathercast
 """
 def textInputRequest(text):
     if not text:
